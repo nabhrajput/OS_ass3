@@ -11,6 +11,8 @@ REFER DOCUMENTATION FOR MORE DETAILS ON FUNSTIONS AND THEIR FUNCTIONALITY
 // add other headers as required
 #include<stdio.h>
 #include<stdlib.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 
 /*
@@ -24,7 +26,6 @@ typedef struct SubChainNode {
     size_t size;
     int type; // 0 for HOLE, 1 for PROCESS
     void* virtual_address;
-    void* physical_address;
     struct SubChainNode* next;
     struct SubChainNode* prev;
 } SubChainNode;
@@ -49,9 +50,16 @@ Initializes all the required parameters for the MeMS system. The main parameters
 Input Parameter: Nothing
 Returns: Nothing
 */
-void mems_init(){
-
+void mems_init() {
+    head = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    head ->next = NULL;
+    head -> prev = NULL;
+    head -> start_virtual_address = 0;
+    head -> total_size = 0;
+    head -> sub_chain_head = NULL;
+    next_virtual_address = 0;
 }
+
 
 
 /*
@@ -60,9 +68,14 @@ allocated memory using the munmap system call.
 Input Parameter: Nothing
 Returns: Nothing
 */
-void mems_finish(){
-    
+void mems_finish() {
+    MainChainNode* temp = head;
+    while(temp != NULL) {
+        munmap(temp->start_virtual_address, temp->total_size);
+        temp = temp->next;
+    }
 }
+
 
 
 /*
@@ -78,6 +91,42 @@ Parameter: The size of the memory the user program wants
 Returns: MeMS Virtual address (that is created by MeMS)
 */ 
 void* mems_malloc(size_t size){
+    size_t mandatory = 0;
+    while(mandatory < size){
+        mandatory += PAGE_SIZE;
+    }
+
+    size_t need = size;
+    size_t extra = mandatory - need;
+
+    if(head->sub_chain_head == NULL){ //if memory is empty 
+        if(extra != 0){ 
+            SubChainNode* first = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            first -> next = NULL;
+            first -> prev = NULL;
+            first -> size = need;
+            first -> virtual_address = next_virtual_address; //virtual address is a pointer , it will store address of the current 
+            first -> type = 1; // Process
+
+            next_virtual_address = next_virtual_address + need;
+
+
+            SubChainNode* second = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            second -> next =  NULL;
+            second -> prev = first;
+            second -> size = extra;
+            second -> virtual_address = next_virtual_address;
+            second -> type = 0;
+
+            next_virtual_address = next_virtual_address + extra;
+            first -> next = second;
+
+            head ->sub_chain_head = first;
+            head -> total_size += mandatory;
+            
+            return first->virtual_address;
+        }
+    }
 
 }
 
@@ -100,7 +149,7 @@ Returns the MeMS physical address mapped to ptr ( ptr is MeMS virtual address).
 Parameter: MeMS Virtual address (that is created by MeMS)
 Returns: MeMS physical address mapped to the passed ptr (MeMS virtual address).
 */
-void *mems_get(void*v_ptr){
+void *mems_get(void* v_ptr){
     
 }
 
