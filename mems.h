@@ -20,6 +20,26 @@ macro to make the output of all system same and conduct a fair evaluation.
 */
 #define PAGE_SIZE 4096
 
+typedef struct SubChainNode {
+    size_t size;
+    int type; // 0 for HOLE, 1 for PROCESS
+    void* virtual_address;
+    void* physical_address;
+    struct SubChainNode* next;
+    struct SubChainNode* prev;
+} SubChainNode;
+
+// Structure for the main chain nodes
+typedef struct MainChainNode {
+    void* start_virtual_address; // Start of the memory segment
+    size_t total_size; // Total size of the memory segment
+    SubChainNode* sub_chain_head; // Head of the sub-chain
+    struct MainChainNode* next;
+    struct MainChainNode* prev;
+} MainChainNode;
+
+MainChainNode* head;
+void* next_virtual_address;
 
 /*
 Initializes all the required parameters for the MeMS system. The main parameters to be initialized are:
