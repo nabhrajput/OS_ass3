@@ -101,7 +101,7 @@ void* mems_malloc(size_t size){
 
     if(head->sub_chain_head == NULL){ //if memory is empty 
         if(extra != 0){ 
-            SubChainNode* first = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             first -> next = NULL;
             first -> prev = NULL;
             first -> size = need;
@@ -111,7 +111,7 @@ void* mems_malloc(size_t size){
             next_virtual_address = next_virtual_address + need;
 
 
-            SubChainNode* second = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            SubChainNode* second = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             second -> next =  NULL;
             second -> prev = first;
             second -> size = extra;
@@ -120,6 +120,22 @@ void* mems_malloc(size_t size){
 
             next_virtual_address = next_virtual_address + extra;
             first -> next = second;
+            second->prev = first;
+
+            head ->sub_chain_head = first;
+            head -> total_size += mandatory;
+            
+            return first->virtual_address;
+        }
+        else{ //extra = 0
+            SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            first -> next = NULL;
+            first -> prev = NULL;
+            first -> size = need;
+            first -> virtual_address = next_virtual_address; //virtual address is a pointer , it will store address of the current 
+            first -> type = 1; // Process
+
+            next_virtual_address = next_virtual_address + need;
 
             head ->sub_chain_head = first;
             head -> total_size += mandatory;
@@ -128,6 +144,111 @@ void* mems_malloc(size_t size){
         }
     }
 
+    else{ //if there is already some memory present
+        /* If enough memory present , give enough memory and update free list
+        */
+        MainChainNode* where_to_make_new = head;
+        MainChainNode* main_temp = head;
+        while(main_temp != NULL){
+            SubChainNode* sub_temp = main_temp->sub_chain_head;
+            while(sub_temp != NULL){
+                if(sub_temp->type == 0 && sub_temp->size <= need){
+                    //you found enough free space
+                    if(extra != 0){
+                        //memory actually needed 
+                        SubChainNode* new_occupied = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                        new_occupied->next = NULL;
+                        new_occupied->prev = NULL;
+                        new_occupied->size = need;
+                        new_occupied->type = 1;
+                        new_occupied->virtual_address = sub_temp->virtual_address;
+
+                        //extra memory that is not used
+                        SubChainNode* new_free = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                        new_free -> next = NULL;
+                        new_free -> prev = NULL;
+                        new_free -> size = (sub_temp->size) - (new_occupied->size);
+                        new_free -> type = 0;
+                        new_free -> virtual_address = (sub_temp->virtual_address) + (new_occupied->size); 
+
+                        new_occupied ->next = new_free;
+                        new_free ->prev = new_occupied;
+
+                        new_occupied ->prev = sub_temp -> prev;
+                        new_free ->next = sub_temp ->next;
+
+                        sub_temp ->prev ->next = new_occupied;
+                        if(sub_temp -> next != NULL){
+                            sub_temp ->next->prev = new_free;
+                        }
+
+                        munmap(sub_temp,sub_temp->size);
+                        return new_occupied->virtual_address;
+                    }
+                    else{ //extra = 0
+
+                    }
+                }
+                sub_temp = sub_temp->next;
+            }
+            where_to_make_new = main_temp;
+            main_temp = main_temp->next;
+        } 
+
+        // it will be executed when no free space found
+        // new node should be created at the end
+        SubChainNode* sub_temp = where_to_make_new->sub_chain_head;
+        while(sub_temp->next != NULL){
+            sub_temp = sub_temp->next;
+        }
+        //reached the last node
+        if(extra != 0){ 
+            SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            first -> next = NULL;
+            first -> prev = NULL;
+            first -> size = need;
+            first -> virtual_address = next_virtual_address; //virtual address is a pointer , it will store address of the current 
+            first -> type = 1; // Process
+
+            next_virtual_address = next_virtual_address + need;
+
+
+            SubChainNode* second = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            second -> next =  NULL;
+            second -> prev = first;
+            second -> size = extra;
+            second -> virtual_address = next_virtual_address;
+            second -> type = 0;
+
+            next_virtual_address = next_virtual_address + extra;
+            first -> next = second;
+            second ->prev = first;
+
+            sub_temp->next = first;
+            first->prev = sub_temp;
+
+            where_to_make_new -> total_size += mandatory;
+            
+            return first->virtual_address;
+        }
+
+        else{ //extra = 0
+            SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            first -> next = NULL;
+            first -> prev = NULL;
+            first -> size = need;
+            first -> virtual_address = next_virtual_address; //virtual address is a pointer , it will store address of the current 
+            first -> type = 1; // Process
+
+            next_virtual_address = next_virtual_address + need;
+            sub_temp->next = first;
+            first -> prev = sub_temp;
+
+            where_to_make_new -> total_size += mandatory;
+            
+            return first->virtual_address;
+        }
+    }
 }
 
 
