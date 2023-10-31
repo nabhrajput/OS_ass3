@@ -153,7 +153,8 @@ void* mems_malloc(size_t size){
         while(main_temp != NULL){
             SubChainNode* sub_temp = main_temp->sub_chain_head;
             while(sub_temp != NULL){
-                if(sub_temp->type == 0 && sub_temp->size <= need){
+                if((sub_temp->type == 0) && (sub_temp->size <= need)){
+                    printf("Node Found \n");
                     //you found enough free space
                     if(extra != 0){
                         //memory actually needed 
@@ -184,9 +185,27 @@ void* mems_malloc(size_t size){
                         }
 
                         munmap(sub_temp,sub_temp->size);
+
                         return new_occupied->virtual_address;
                     }
                     else{ //extra = 0
+                        SubChainNode* new_occupied = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                        new_occupied->next = NULL;
+                        new_occupied->prev = NULL;
+                        new_occupied->size = need;
+                        new_occupied->type = 1;
+                        new_occupied->virtual_address = sub_temp->virtual_address;
+
+                        new_occupied ->next = sub_temp->next;
+                        new_occupied ->prev = sub_temp ->prev;
+                        if(sub_temp -> next != NULL){
+                            sub_temp ->next->prev = new_occupied;
+                        } 
+                        sub_temp->prev->next = new_occupied;
+
+                        munmap(sub_temp,sub_temp->size);
+
+                        return new_occupied->virtual_address;
 
                     }
                 }
@@ -275,11 +294,14 @@ Returns: MeMS physical address mapped to the passed ptr (MeMS virtual address).
 */
 void *mems_get(void* v_ptr){
     MainChainNode* temp_main = head;
+    printf("Something's happening in Mainchain");
     while(temp_main != NULL){
         SubChainNode* temp_sub = head->sub_chain_head;
+        printf("Something's happening in Subchain");
         while(temp_sub != NULL){
             if(temp_sub->virtual_address == v_ptr){
-                printf("Virtual Address %p found at %p\n",v_ptr,temp_sub);
+                printf("Something's happening");
+                printf("Virtual Address %p found at %p\n",temp_sub->virtual_address,temp_sub);
                 return temp_sub;
             }
             temp_sub = temp_sub->next;
@@ -287,6 +309,7 @@ void *mems_get(void* v_ptr){
         temp_main=temp_main->next;
     }
     printf("Address not found !!");
+    return NULL;
 }
 
 
