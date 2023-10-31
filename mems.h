@@ -345,6 +345,21 @@ this function free up the memory pointed by our virtual_address and add it to th
 Parameter: MeMS Virtual address (that is created by MeMS) 
 Returns: nothing
 */
-void mems_free(void *v_ptr){
-    
+void mems_free(void* ptr) {
+    MainChainNode* main_node = head;
+    SubChainNode* sub_node;
+
+    // Find the sub-chain node associated with the given MeMS virtual address (ptr)
+    while (main_node != NULL) {
+        sub_node = main_node->sub_chain_head;
+        while (sub_node != NULL) {
+            if (sub_node->virtual_address == ptr) {
+                // Mark the segment as HOLE
+                sub_node->type = 0;
+                return; 
+            }
+            sub_node = sub_node->next;
+        }
+        main_node = main_node->next;
+    }
 }
