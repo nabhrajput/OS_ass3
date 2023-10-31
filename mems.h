@@ -100,6 +100,7 @@ void* mems_malloc(size_t size){
     size_t extra = mandatory - need;
 
     if(head->sub_chain_head == NULL){ //if memory is empty 
+        printf("Adding first node \n");
         if(extra != 0){ 
             SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             first -> next = NULL;
@@ -197,10 +198,16 @@ void* mems_malloc(size_t size){
 
         // it will be executed when no free space found
         // new node should be created at the end
-        SubChainNode* sub_temp = where_to_make_new->sub_chain_head;
-        while(sub_temp->next != NULL){
-            sub_temp = sub_temp->next;
-        }
+
+        printf("Adding new Main node \n ");
+        MainChainNode* new_main = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        new_main->next = NULL;
+        new_main->prev = where_to_make_new;
+        where_to_make_new ->next = new_main;
+        new_main ->start_virtual_address = next_virtual_address;
+        new_main->total_size = mandatory;
+        
+
         //reached the last node
         if(extra != 0){ 
             SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -224,10 +231,9 @@ void* mems_malloc(size_t size){
             first -> next = second;
             second ->prev = first;
 
-            sub_temp->next = first;
-            first->prev = sub_temp;
+            new_main->sub_chain_head = first;
+            first->prev = NULL;
 
-            where_to_make_new -> total_size += mandatory;
             
             return first->virtual_address;
         }
@@ -241,10 +247,7 @@ void* mems_malloc(size_t size){
             first -> type = 1; // Process
 
             next_virtual_address = next_virtual_address + need;
-            sub_temp->next = first;
-            first -> prev = sub_temp;
-
-            where_to_make_new -> total_size += mandatory;
+            new_main->sub_chain_head = first;;
             
             return first->virtual_address;
         }
@@ -271,7 +274,19 @@ Parameter: MeMS Virtual address (that is created by MeMS)
 Returns: MeMS physical address mapped to the passed ptr (MeMS virtual address).
 */
 void *mems_get(void* v_ptr){
-    
+    MainChainNode* temp_main = head;
+    while(temp_main != NULL){
+        SubChainNode* temp_sub = head->sub_chain_head;
+        while(temp_sub != NULL){
+            if(temp_sub->virtual_address == v_ptr){
+                printf("Virtual Address %p found at %p\n",v_ptr,temp_sub);
+                return temp_sub;
+            }
+            temp_sub = temp_sub->next;
+        }
+        temp_main=temp_main->next;
+    }
+    printf("Address not found !!");
 }
 
 
