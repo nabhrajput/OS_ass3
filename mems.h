@@ -282,9 +282,36 @@ this function print the stats of the MeMS system like
 Parameter: Nothing
 Returns: Nothing but should print the necessary information on STDOUT
 */
-void mems_print_stats(){
+void mems_print_stats() {
+    MainChainNode* main_node = head;
+    size_t total_mapped_pages = 0;
+    size_t total_unused_memory = 0;
 
+    while (main_node != NULL) {
+        SubChainNode* sub_node = main_node->sub_chain_head;
+
+        while (sub_node != NULL) {
+            // Print information about the sub-chain node
+            printf("Virtual Address: %p, Size: %zu, Type: %s\n", sub_node->virtual_address, sub_node->size, sub_node->type == 0 ? "HOLE" : "PROCESS");
+
+            // Calculate total unused memory (HOLE)
+            if (sub_node->type == 0) {
+                total_unused_memory += sub_node->size;
+            }
+
+            sub_node = sub_node->next;
+        }
+
+        total_mapped_pages += main_node->total_size / PAGE_SIZE;
+
+        main_node = main_node->next;
+    }
+
+    // Print total mapped pages and unused memory
+    printf("Total Mapped Pages: %zu\n", total_mapped_pages);
+    printf("Total Unused Memory: %zu bytes\n", total_unused_memory);
 }
+
 
 
 /*
