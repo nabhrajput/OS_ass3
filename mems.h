@@ -69,11 +69,28 @@ Input Parameter: Nothing
 Returns: Nothing
 */
 void mems_finish() {
-    MainChainNode* temp = head;
-    while(temp != NULL) {
-        munmap(temp->start_virtual_address, temp->total_size);
-        temp = temp->next;
+    MainChainNode* main_node = head;
+    MainChainNode* temp_main;
+
+    while (main_node != NULL) {
+        SubChainNode* sub_node = main_node->sub_chain_head;
+        SubChainNode* temp_sub;
+
+        while (sub_node != NULL) {
+            // Unmap the memory segment and free the SubChainNode
+            temp_sub = sub_node;
+            sub_node = sub_node->next;
+            munmap(temp_sub->virtual_address, temp_sub->size);
+            free(temp_sub);
+        }
+
+        // Free the MainChainNode
+        temp_main = main_node;
+        main_node = main_node->next;
+        free(temp_main);
     }
+
+    head = NULL; // Reset the MeMS system
 }
 
 
