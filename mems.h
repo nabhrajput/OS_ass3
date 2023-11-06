@@ -373,7 +373,32 @@ void mems_free(void* ptr) {
             if (sub_node->virtual_address == ptr) {
                 // Mark the segment as HOLE
                 sub_node->type = 0;
-                return; 
+
+                // Try to club this HOLE with adjacent HOLEs
+                SubChainNode* prev_hole = sub_node->prev;
+                SubChainNode* next_hole = sub_node->next;
+
+                // Club with the previous HOLE if it exists and is not PROCESS
+                if (prev_hole != NULL && prev_hole->type == 0) {
+                    prev_hole->size += sub_node->size;
+                    prev_hole->next = next_hole;
+                    if (next_hole != NULL) {
+                        next_hole->prev = prev_hole;
+                    }
+                    munmap(sub_node, sub_node->size);
+                }
+
+                // Club with the next HOLE if it exists and is not PROCESS
+                if (next_hole != NULL && next_hole->type == 0) {
+                    sub_node->size += next_hole->size;
+                    sub_node->next = next_hole->next;
+                    if (next_hole->next != NULL) {
+                        next_hole->next->prev = sub_node;
+                    }
+                    munmap(next_hole, next_hole->size);
+                }
+
+                return; // Done with freeing and clubbing
             }
             sub_node = sub_node->next;
         }
