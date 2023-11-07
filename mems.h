@@ -402,7 +402,6 @@ void mems_free(void* ptr) {
 
                 // Mark the segment as HOLE and remove its virtual address
                 sub_node->type = 0;
-                sub_node->virtual_address = NULL;
 
                 // Try to club this HOLE with adjacent HOLEs
                 SubChainNode* prev_hole = sub_node->prev;
