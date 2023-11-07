@@ -303,30 +303,53 @@ void mems_print_stats() {
     MainChainNode* main_node = head;
     size_t total_mapped_pages = 0;
     size_t total_unused_memory = 0;
+    int main_chain_length = 0;
+    int sub_chain_lengths[10] = {0}; // Assuming a maximum of 10 sub-chains
+    int ind=0;
+
+    // Initialize an array to store sub-chain lengths
+    for (int i = 0; i < 10; i++) {
+        sub_chain_lengths[i] = 0;
+    }
 
     while (main_node != NULL) {
+        main_chain_length++;
         SubChainNode* sub_node = main_node->sub_chain_head;
+        printf("MAIN[%ld:%ld] -> ", (long)sub_node->virtual_address, (long)sub_node->virtual_address+4095);
 
         while (sub_node != NULL) {
             // Print information about the sub-chain node
-            printf("Virtual Address: %p, Size: %zu, Type: %s\n", sub_node->virtual_address, sub_node->size, sub_node->type == 0 ? "HOLE" : "PROCESS");
+            if (sub_node->type == 0) {
+                printf("H");
+            } else {
+                printf("P");
+            }
+
+            printf("[%ld:%ld] ->", (long)sub_node->virtual_address, (long)((char*)sub_node->virtual_address + sub_node->size-1));
 
             // Calculate total unused memory (HOLE)
             if (sub_node->type == 0) {
                 total_unused_memory += sub_node->size;
             }
-
+            sub_chain_lengths[ind]++;
             sub_node = sub_node->next;
         }
-
+        ind++;
+        printf("NULL\n");
         total_mapped_pages += main_node->total_size / PAGE_SIZE;
-
         main_node = main_node->next;
     }
 
     // Print total mapped pages and unused memory
-    printf("Total Mapped Pages: %zu\n", total_mapped_pages);
-    printf("Total Unused Memory: %zu bytes\n", total_unused_memory);
+    printf("Page used: %zu\n", total_mapped_pages);
+    printf("Space unused: %zu bytes\n", total_unused_memory);
+    printf("Main Chain Length: %d\n", main_chain_length);
+    printf("Sub-chain Length array: ");
+    
+    for (int i = 0; i < main_chain_length; i++) {
+        printf("%d ", sub_chain_lengths[i]);
+    }
+    printf("\n");
 }
 
 
@@ -371,8 +394,15 @@ void mems_free(void* ptr) {
         sub_node = main_node->sub_chain_head;
         while (sub_node != NULL) {
             if (sub_node->virtual_address == ptr) {
-                // Mark the segment as HOLE
+                // if (sub_node->type == 0) {
+                //     // Handling the case where the segment is already a HOLE
+                //     fprintf(stderr, "Error: Attempted to free a HOLE. Ignoring.\n");
+                //     return;
+                // }
+
+                // Mark the segment as HOLE and remove its virtual address
                 sub_node->type = 0;
+                sub_node->virtual_address = NULL;
 
                 // Try to club this HOLE with adjacent HOLEs
                 SubChainNode* prev_hole = sub_node->prev;
@@ -385,7 +415,9 @@ void mems_free(void* ptr) {
                     if (next_hole != NULL) {
                         next_hole->prev = prev_hole;
                     }
-                    munmap(sub_node, sub_node->size);
+                    if (munmap(sub_node, sub_node->size) != 0) {
+                        perror("munmap");
+                    }
                 }
 
                 // Club with the next HOLE if it exists and is not PROCESS
@@ -395,13 +427,18 @@ void mems_free(void* ptr) {
                     if (next_hole->next != NULL) {
                         next_hole->next->prev = sub_node;
                     }
-                    munmap(next_hole, next_hole->size);
+                    if (munmap(next_hole, next_hole->size) != 0) {
+                        perror("munmap");
+                    }
                 }
 
-                return; // Done with freeing and clubbing
+                return;
             }
             sub_node = sub_node->next;
         }
         main_node = main_node->next;
     }
+
+    // Handling the case where the MeMS virtual address is not found
+    fprintf(stderr, "Error: MeMS virtual address not found\n");
 }
