@@ -17,16 +17,6 @@ int main(int argc, char const *argv[])
         printf("Virtual address: %lu\n", (unsigned long)ptr[i]);
     }
 
-
-    printf("\n--------- Printing Stats [mems_print_stats] --------\n");
-    mems_print_stats();
-
-
-    printf("\n--------- Freeing up the memory [mems_free] --------\n");
-    mems_free(ptr[2]);
-    mems_print_stats();
-    ptr[2] = (int*)mems_malloc(sizeof(int)*250);
-    mems_print_stats();
     /*
     In this section we are tring to write value to 1st index of array[0] (here it is 0 based indexing).
     We get get value of both the 0th index and 1st index of array[0] by using function mems_get.
@@ -58,5 +48,8 @@ int main(int argc, char const *argv[])
     mems_print_stats();
     ptr[3] = (int*)mems_malloc(sizeof(int)*250);
     mems_print_stats();
+
+    printf("\n--------- Unmapping all memory [mems_finish] --------\n\n");
+    mems_finish();
     return 0;
 }
