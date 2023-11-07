@@ -110,7 +110,6 @@ void* mems_malloc(size_t size){
     size_t extra = 0;
 
     if(head->sub_chain_head == NULL){ //if memory is empty 
-
         size_t mandatory = 0;
         while(mandatory < size){
             mandatory += PAGE_SIZE;
@@ -119,14 +118,19 @@ void* mems_malloc(size_t size){
         need = size;
         extra = mandatory - need;
 
-        //printf("Adding first node \n");
+        
         if(extra != 0){ 
             SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if(first == MAP_FAILED){
+                perror("mmap");
+                exit(EXIT_FAILURE);
+            }
             first -> next = NULL;
             first -> prev = NULL;
             first -> size = need;
             first -> virtual_address = next_virtual_address; //virtual address is a pointer , it will store address of the current 
             first -> type = 1; // Process
+            first ->physical_address = mmap(NULL,need, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
             next_virtual_address = next_virtual_address + need;
 
@@ -137,6 +141,7 @@ void* mems_malloc(size_t size){
             second -> size = extra;
             second -> virtual_address = next_virtual_address;
             second -> type = 0;
+            second ->physical_address = mmap(NULL,extra, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
             next_virtual_address = next_virtual_address + extra;
             first -> next = second;
@@ -144,22 +149,25 @@ void* mems_malloc(size_t size){
 
             head ->sub_chain_head = first;
             head -> total_size += mandatory;
-            
             return first->virtual_address;
         }
         else{ //extra = 0
             SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if(first == MAP_FAILED){
+                perror("mmap");
+                exit(EXIT_FAILURE);
+            }
             first -> next = NULL;
             first -> prev = NULL;
             first -> size = need;
             first -> virtual_address = next_virtual_address; //virtual address is a pointer , it will store address of the current 
             first -> type = 1; // Process
+            first ->physical_address = mmap(NULL,need, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
             next_virtual_address = next_virtual_address + need;
 
             head ->sub_chain_head = first;
             head -> total_size += mandatory;
-            
             return first->virtual_address;
         }
     }
@@ -174,24 +182,33 @@ void* mems_malloc(size_t size){
             while(sub_temp != NULL){
                 if((sub_temp->type == 0) && (sub_temp->size >= need)){
                     extra = sub_temp->size - need ;
-                    //printf("Memory found=>  needed : %ld ; extra : %ld ; Avialable : %ld\n",need,extra,sub_temp->size);
                     //you found enough free space
                     if(extra != 0){
                         //memory actually needed 
                         SubChainNode* new_occupied = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                        if(new_occupied == MAP_FAILED){
+                            perror("mmap");
+                            exit(EXIT_FAILURE);
+                        }
                         new_occupied->next = NULL;
                         new_occupied->prev = NULL;
                         new_occupied->size = need;
                         new_occupied->type = 1;
                         new_occupied->virtual_address = sub_temp->virtual_address;
+                        new_occupied ->physical_address = mmap(NULL,need, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
                         //extra memory that is not used
                         SubChainNode* new_free = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                        if(new_free == MAP_FAILED){
+                            perror("mmap");
+                            exit(EXIT_FAILURE);
+                        }
                         new_free -> next = NULL;
                         new_free -> prev = NULL;
                         new_free -> size = (sub_temp->size) - (new_occupied->size);
                         new_free -> type = 0;
                         new_free -> virtual_address = (sub_temp->virtual_address) + (new_occupied->size); 
+                        new_free -> physical_address = mmap(NULL,(sub_temp->size) - (new_occupied->size), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
                         new_occupied ->next = new_free;
                         new_free ->prev = new_occupied;
@@ -203,6 +220,9 @@ void* mems_malloc(size_t size){
                         if(sub_temp -> next != NULL){
                             sub_temp ->next->prev = new_free;
                         }
+                        if(sub_temp -> prev != NULL){
+                            sub_temp->prev->next = new_occupied;
+                        }
 
                         munmap(sub_temp,sizeof(sub_temp));
 
@@ -210,22 +230,30 @@ void* mems_malloc(size_t size){
                     }
                     else{ //extra = 0
                         SubChainNode* new_occupied = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                        if(new_occupied == MAP_FAILED){
+                            perror("mmap");
+                            exit(EXIT_FAILURE);
+                        }
                         new_occupied->next = NULL;
                         new_occupied->prev = NULL;
                         new_occupied->size = need;
                         new_occupied->type = 1;
                         new_occupied->virtual_address = sub_temp->virtual_address;
+                        new_occupied ->physical_address = mmap(NULL,need, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
 
                         new_occupied ->next = sub_temp->next;
                         new_occupied ->prev = sub_temp ->prev;
                         if(sub_temp -> next != NULL){
                             sub_temp ->next->prev = new_occupied;
                         } 
-                        sub_temp->prev->next = new_occupied;
-                        sub_temp->next->prev = new_occupied;
-
-                        munmap(sub_temp,sub_temp->size);
-
+                        if(sub_temp -> prev != NULL){
+                            sub_temp->prev->next = new_occupied;
+                        }
+                        if(main_temp->sub_chain_head == sub_temp){
+                            main_temp->sub_chain_head = new_occupied;
+                        }
+                        munmap(sub_temp,sizeof(sub_temp));
                         return new_occupied->virtual_address;
 
                     }
@@ -247,7 +275,6 @@ void* mems_malloc(size_t size){
         need = size;
         extra = mandatory - need;
 
-        //printf("Adding new Main node \n ");
         MainChainNode* new_main = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         new_main->next = NULL;
         new_main->prev = where_to_make_new;
@@ -259,11 +286,16 @@ void* mems_malloc(size_t size){
         //reached the last node
         if(extra != 0){ 
             SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if(first == MAP_FAILED){
+                perror("mmap");
+                exit(EXIT_FAILURE);
+            }
             first -> next = NULL;
             first -> prev = NULL;
             first -> size = need;
             first -> virtual_address = next_virtual_address; //virtual address is a pointer , it will store address of the current 
             first -> type = 1; // Process
+            first ->physical_address = mmap(NULL,need, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
             next_virtual_address = next_virtual_address + need;
 
@@ -274,6 +306,7 @@ void* mems_malloc(size_t size){
             second -> size = extra;
             second -> virtual_address = next_virtual_address;
             second -> type = 0;
+            second ->physical_address = mmap(NULL,extra, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
             next_virtual_address = next_virtual_address + extra;
             first -> next = second;
@@ -282,26 +315,30 @@ void* mems_malloc(size_t size){
             new_main->sub_chain_head = first;
             first->prev = NULL;
 
-            
             return first->virtual_address;
         }
 
         else{ //extra = 0
             SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if(first == MAP_FAILED){
+                perror("mmap");
+                exit(EXIT_FAILURE);
+            }
             first -> next = NULL;
             first -> prev = NULL;
             first -> size = need;
             first -> virtual_address = next_virtual_address; //virtual address is a pointer , it will store address of the current 
             first -> type = 1; // Process
+            first ->physical_address = mmap(NULL,need, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
 
             next_virtual_address = next_virtual_address + need;
-            new_main->sub_chain_head = first;;
-            
+            new_main->sub_chain_head = first;
+
             return first->virtual_address;
         }
     }
 }
-
 
 /*
 this function print the stats of the MeMS system like
