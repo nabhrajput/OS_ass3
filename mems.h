@@ -214,15 +214,16 @@ void* mems_malloc(size_t size){
                         new_occupied ->next = new_free;
                         new_free ->prev = new_occupied;
 
-                        new_occupied ->prev = sub_temp -> prev;
-                        new_free ->next = sub_temp ->next;
-
-                        sub_temp ->prev ->next = new_occupied;
                         if(sub_temp -> next != NULL){
+                            new_free ->next = sub_temp ->next;
                             sub_temp ->next->prev = new_free;
                         }
                         if(sub_temp -> prev != NULL){
+                            new_occupied ->prev = sub_temp -> prev;
                             sub_temp->prev->next = new_occupied;
+                        }
+                        if(main_temp->sub_chain_head == sub_temp){
+                            main_temp->sub_chain_head = new_occupied;
                         }
 
                         munmap(sub_temp,sizeof(sub_temp));
@@ -275,7 +276,6 @@ void* mems_malloc(size_t size){
 
         need = size;
         extra = mandatory - need;
-
 
         MainChainNode* new_main = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         new_main->next = NULL;
