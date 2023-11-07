@@ -26,6 +26,7 @@ typedef struct SubChainNode {
     size_t size;
     int type; // 0 for HOLE, 1 for PROCESS
     void* virtual_address;
+    void* physical_address;
     struct SubChainNode* next;
     struct SubChainNode* prev;
 } SubChainNode;
