@@ -434,30 +434,27 @@ Returns: MeMS physical address mapped to the passed ptr (MeMS virtual address).
 //     printf("Address not found !!");
 //     return NULL;
 // }
-void* mems_get(void* v_ptr) {
-    // printf("hi\n");
-    MainChainNode* main_node = head;
-
-    while (main_node != NULL) {
-        // printf("hi2\n");
-        SubChainNode* sub_node = main_node->sub_chain_head;
-        // printf("hi3\n");
-
-        while (sub_node != NULL) {
-            // printf("hi4\n");
-            if (sub_node->virtual_address == v_ptr) {
-                // Found the SubChainNode with the given virtual address
-                // printf("hi5\n");
-                return sub_node->physical_address;
-            }
-            sub_node = sub_node->next;
+void *mems_get(void* v_ptr){
+    MainChainNode* temp_main = head;
+    //printf("%ld\n",v_ptr);
+    int flag = 0;
+    void* ans = NULL;
+    while(temp_main != NULL){
+        SubChainNode* temp_sub = temp_main->sub_chain_head;
+        while(temp_sub->next != NULL && temp_sub->next->virtual_address <= v_ptr){
+            temp_sub = temp_sub->next;
         }
-        main_node = main_node->next;
+        if(temp_sub->next != NULL && temp_sub->next->virtual_address > v_ptr){
+                unsigned long int offset = ((unsigned long int)v_ptr)-((unsigned long int)temp_sub->virtual_address);
+                ans = (void*)((unsigned long int)temp_sub->physical_address + offset);
+                return ans;
+        }
+        temp_main=temp_main->next;
     }
-
-    // If the virtual address is not found, return NULL (or any appropriate value)
-    perror("mems_get: Virtual address not found");
-    return NULL;
+    if(ans == NULL){
+        printf("Address not found !!\n");
+    }
+    return ans;
 }
 
 
