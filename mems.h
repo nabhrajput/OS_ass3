@@ -54,10 +54,10 @@ void mems_init() {
     head = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     head ->next = NULL;
     head -> prev = NULL;
-    head -> start_virtual_address = 0;
     head -> total_size = 0;
     head -> sub_chain_head = NULL;
-    next_virtual_address = 0;
+    next_virtual_address = (void *)1000;
+    head -> start_virtual_address = (void *)next_virtual_address;
 }
 
 
@@ -108,15 +108,19 @@ Parameter: The size of the memory the user program wants
 Returns: MeMS Virtual address (that is created by MeMS)
 */ 
 void* mems_malloc(size_t size){
-    size_t mandatory = 0;
-    while(mandatory < size){
-        mandatory += PAGE_SIZE;
-    }
-
     size_t need = size;
-    size_t extra = mandatory - need;
+    size_t extra = 0;
 
     if(head->sub_chain_head == NULL){ //if memory is empty 
+
+        size_t mandatory = 0;
+        while(mandatory < size){
+            mandatory += PAGE_SIZE;
+        }
+
+        need = size;
+        extra = mandatory - need;
+
         printf("Adding first node \n");
         if(extra != 0){ 
             SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -170,8 +174,9 @@ void* mems_malloc(size_t size){
         while(main_temp != NULL){
             SubChainNode* sub_temp = main_temp->sub_chain_head;
             while(sub_temp != NULL){
-                if((sub_temp->type == 0) && (sub_temp->size <= need)){
-                    printf("Node Found \n");
+                if((sub_temp->type == 0) && (sub_temp->size >= need)){
+                    extra = sub_temp->size - need ;
+                    printf("Memory found=>  needed : %ld ; extra : %ld ; Avialable : %ld\n",need,extra,sub_temp->size);
                     //you found enough free space
                     if(extra != 0){
                         //memory actually needed 
@@ -219,6 +224,7 @@ void* mems_malloc(size_t size){
                             sub_temp ->next->prev = new_occupied;
                         } 
                         sub_temp->prev->next = new_occupied;
+                        sub_temp->next->prev = new_occupied;
 
                         munmap(sub_temp,sub_temp->size);
 
@@ -234,6 +240,14 @@ void* mems_malloc(size_t size){
 
         // it will be executed when no free space found
         // new node should be created at the end
+
+        size_t mandatory = 0;
+        while(mandatory < size){
+            mandatory += PAGE_SIZE;
+        }
+
+        need = size;
+        extra = mandatory - need;
 
         printf("Adding new Main node \n ");
         MainChainNode* new_main = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -315,7 +329,7 @@ void mems_print_stats() {
     while (main_node != NULL) {
         main_chain_length++;
         SubChainNode* sub_node = main_node->sub_chain_head;
-        printf("MAIN[%ld:%ld] -> ", (long)sub_node->virtual_address, (long)sub_node->virtual_address+4095);
+        printf("MAIN[%ld:%ld] -> ", (long)main_node->start_virtual_address, (long)main_node->start_virtual_address+(long)main_node->total_size-1);
 
         while (sub_node != NULL) {
             // Print information about the sub-chain node
@@ -325,7 +339,7 @@ void mems_print_stats() {
                 printf("P");
             }
 
-            printf("[%ld:%ld] ->", (long)sub_node->virtual_address, (long)((char*)sub_node->virtual_address + sub_node->size-1));
+            printf("[%ld:%ld] ->", (long)sub_node->virtual_address, (long)((void *)sub_node->virtual_address + sub_node->size-1));
 
             // Calculate total unused memory (HOLE)
             if (sub_node->type == 0) {
@@ -402,6 +416,7 @@ void mems_free(void* ptr) {
 
                 // Mark the segment as HOLE and remove its virtual address
                 sub_node->type = 0;
+                //sub_node->virtual_address = NULL;
 
                 // Try to club this HOLE with adjacent HOLEs
                 SubChainNode* prev_hole = sub_node->prev;
