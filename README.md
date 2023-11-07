@@ -54,7 +54,6 @@ This Function resets the whole System.
 
 ### void* mems_malloc(size_t size)
 Allocates memory of the specified size by reusing a segment from the free list if a sufficiently large segment is available. 
-
 Else, uses the mmap system call to allocate more memory on the heap and updates 
 the free list accordingly.
 
@@ -66,18 +65,20 @@ this function print the stats of the MeMS system like
 1. How many pages are utilised by using the mems_malloc
 2. how much memory is unused i.e. the memory that is in freelist and is not used.
 3. It also prints details about each node in the main chain and each segment (PROCESS or HOLE) in the sub-chain.
+
 Parameter: Nothing
 Returns: Nothing but should print the necessary information on STDOUT
 
 ###  void* mems_get(void* ptr)
 Returns the MeMS physical address mapped to ptr ( ptr is MeMS virtual address).
+
 Parameter: MeMS Virtual address (that is created by MeMS)
 Returns: MeMS physical address mapped to the passed ptr (MeMS virtual address).
 
 ### void mems_free(void* ptr)
 this function free up the memory pointed by our virtual_address and add it to the free list.
-
 If that particular address is not found we're printing "ADDRESS NOT FOUND!!"
+
 Parameter: MeMS Virtual address (that is created by MeMS) 
 Returns: nothing
 
