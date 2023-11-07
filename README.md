@@ -57,6 +57,10 @@ Allocates memory of the specified size by reusing a segment from the free list i
 Else, uses the mmap system call to allocate more memory on the heap and updates 
 the free list accordingly.
 
+there are few cases which has to implemented separately
+1. if no node has been implemented , then we first have to give some space to the head and then initialise the needful sub nodes
+2. if some nodes are created before hand , we need to first find enough space for the given size. If found just allocate that much memory to the process and to the hole (if needed). Otherwise create separate main node for the new allocations.
+
 Parameter: The size of the memory the user program wants
 Returns: MeMS Virtual address (that is created by MeMS)
 
@@ -66,11 +70,14 @@ this function print the stats of the MeMS system like
 2. how much memory is unused i.e. the memory that is in freelist and is not used.
 3. It also prints details about each node in the main chain and each segment (PROCESS or HOLE) in the sub-chain.
 
+we are going to each and every node , thus taking in account of all the processes, holes , used memory , unused memory, number of pages etc.
+
 Parameter: Nothing
 Returns: Nothing but should print the necessary information on STDOUT
 
 ###  void* mems_get(void* ptr)
 Returns the MeMS physical address mapped to ptr ( ptr is MeMS virtual address).
+here, we are traversing over the freelist data structure and checking if the MeMS virtual address of the node match given address. if so , we returns the MeMS physical address of the desired node.
 
 Parameter: MeMS Virtual address (that is created by MeMS)
 Returns: MeMS physical address mapped to the passed ptr (MeMS virtual address).
@@ -78,6 +85,9 @@ Returns: MeMS physical address mapped to the passed ptr (MeMS virtual address).
 ### void mems_free(void* ptr)
 this function free up the memory pointed by our virtual_address and add it to the free list.
 If that particular address is not found we're printing "ADDRESS NOT FOUND!!"
+
+here we traversing over list the free list searching a particular MeMS virtual address , if we got so, we convert that node from process to hole.
+we are also taking care that , if we found two adjacent holes. we should club or merge them.
 
 Parameter: MeMS Virtual address (that is created by MeMS) 
 Returns: nothing
