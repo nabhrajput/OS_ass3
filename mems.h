@@ -456,6 +456,7 @@ void* mems_get(void* v_ptr) {
     }
 
     // If the virtual address is not found, return NULL (or any appropriate value)
+    perror("mems_get: Virtual address not found");
     return NULL;
 }
 
