@@ -415,23 +415,47 @@ Returns the MeMS physical address mapped to ptr ( ptr is MeMS virtual address).
 Parameter: MeMS Virtual address (that is created by MeMS)
 Returns: MeMS physical address mapped to the passed ptr (MeMS virtual address).
 */
-void *mems_get(void* v_ptr){
-    MainChainNode* temp_main = head;
-    printf("Something's happening in Mainchain");
-    while(temp_main != NULL){
-        SubChainNode* temp_sub = head->sub_chain_head;
-        printf("Something's happening in Subchain");
-        while(temp_sub != NULL){
-            if(temp_sub->virtual_address == v_ptr){
-                printf("Something's happening");
-                printf("Virtual Address %p found at %p\n",temp_sub->virtual_address,temp_sub);
-                return temp_sub;
+// void *mems_get(void* v_ptr){
+//     MainChainNode* temp_main = head;
+//     printf("Something's happening in Mainchain");
+//     while(temp_main != NULL){
+//         SubChainNode* temp_sub = head->sub_chain_head;
+//         printf("Something's happening in Subchain");
+//         while(temp_sub != NULL){
+//             if(temp_sub->virtual_address == v_ptr){
+//                 printf("Something's happening");
+//                 printf("Virtual Address %p found at %p\n",temp_sub->virtual_address,temp_sub);
+//                 return temp_sub;
+//             }
+//             temp_sub = temp_sub->next;
+//         }
+//         temp_main=temp_main->next;
+//     }
+//     printf("Address not found !!");
+//     return NULL;
+// }
+void* mems_get(void* v_ptr) {
+    // printf("hi\n");
+    MainChainNode* main_node = head;
+
+    while (main_node != NULL) {
+        // printf("hi2\n");
+        SubChainNode* sub_node = main_node->sub_chain_head;
+        // printf("hi3\n");
+
+        while (sub_node != NULL) {
+            // printf("hi4\n");
+            if (sub_node->virtual_address == v_ptr) {
+                // Found the SubChainNode with the given virtual address
+                // printf("hi5\n");
+                return sub_node->physical_address;
             }
-            temp_sub = temp_sub->next;
+            sub_node = sub_node->next;
         }
-        temp_main=temp_main->next;
+        main_node = main_node->next;
     }
-    printf("Address not found !!");
+
+    // If the virtual address is not found, return NULL (or any appropriate value)
     return NULL;
 }
 
