@@ -81,13 +81,11 @@ void mems_finish() {
             temp_sub = sub_node;
             sub_node = sub_node->next;
             munmap(temp_sub->virtual_address, temp_sub->size);
-            free(temp_sub);
         }
 
         // Free the MainChainNode
         temp_main = main_node;
         main_node = main_node->next;
-        free(temp_main);
     }
 
     head = NULL; // Reset the MeMS system
