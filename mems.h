@@ -121,7 +121,7 @@ void* mems_malloc(size_t size){
         need = size;
         extra = mandatory - need;
 
-        printf("Adding first node \n");
+        //printf("Adding first node \n");
         if(extra != 0){ 
             SubChainNode* first = mmap(NULL,sizeof(SubChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             first -> next = NULL;
@@ -176,7 +176,7 @@ void* mems_malloc(size_t size){
             while(sub_temp != NULL){
                 if((sub_temp->type == 0) && (sub_temp->size >= need)){
                     extra = sub_temp->size - need ;
-                    printf("Memory found=>  needed : %ld ; extra : %ld ; Avialable : %ld\n",need,extra,sub_temp->size);
+                    //printf("Memory found=>  needed : %ld ; extra : %ld ; Avialable : %ld\n",need,extra,sub_temp->size);
                     //you found enough free space
                     if(extra != 0){
                         //memory actually needed 
@@ -206,7 +206,7 @@ void* mems_malloc(size_t size){
                             sub_temp ->next->prev = new_free;
                         }
 
-                        munmap(sub_temp,sub_temp->size);
+                        munmap(sub_temp,sizeof(sub_temp));
 
                         return new_occupied->virtual_address;
                     }
@@ -249,7 +249,7 @@ void* mems_malloc(size_t size){
         need = size;
         extra = mandatory - need;
 
-        printf("Adding new Main node \n ");
+        //printf("Adding new Main node \n ");
         MainChainNode* new_main = mmap(NULL,sizeof(MainChainNode), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         new_main->next = NULL;
         new_main->prev = where_to_make_new;
@@ -314,6 +314,7 @@ Parameter: Nothing
 Returns: Nothing but should print the necessary information on STDOUT
 */
 void mems_print_stats() {
+    printf("----- MeMS SYSTEM STATS -----\n");
     MainChainNode* main_node = head;
     size_t total_mapped_pages = 0;
     size_t total_unused_memory = 0;
@@ -329,7 +330,7 @@ void mems_print_stats() {
     while (main_node != NULL) {
         main_chain_length++;
         SubChainNode* sub_node = main_node->sub_chain_head;
-        printf("MAIN[%ld:%ld] -> ", (long)main_node->start_virtual_address, (long)main_node->start_virtual_address+(long)main_node->total_size-1);
+        printf("MAIN[%ld:%ld]-> ", (long)main_node->start_virtual_address, (long)main_node->start_virtual_address+(long)main_node->total_size-1);
 
         while (sub_node != NULL) {
             // Print information about the sub-chain node
@@ -355,13 +356,17 @@ void mems_print_stats() {
     }
 
     // Print total mapped pages and unused memory
-    printf("Page used: %zu\n", total_mapped_pages);
-    printf("Space unused: %zu bytes\n", total_unused_memory);
-    printf("Main Chain Length: %d\n", main_chain_length);
-    printf("Sub-chain Length array: ");
+    printf("Page used:\t%zu\n", total_mapped_pages);
+    printf("Space unused:\t%zu bytes\n", total_unused_memory);
+    printf("Main Chain Length:\t%d\n", main_chain_length);
+    printf("Sub-chain Length array: [");
     
     for (int i = 0; i < main_chain_length; i++) {
-        printf("%d ", sub_chain_lengths[i]);
+        printf("%d, ", sub_chain_lengths[i]);
+    }
+    printf("]\n");
+    for(int i = 0;i<29;i++){
+        printf("-");
     }
     printf("\n");
 }
